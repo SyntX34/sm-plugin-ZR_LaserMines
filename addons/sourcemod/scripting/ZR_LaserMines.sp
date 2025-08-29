@@ -1,21 +1,23 @@
 /************************
 	Original author: FrozDark
-	Edited by: ire.
+	Edited by: ire. and +SyntX
 ************************/
 
 #include <sourcemod>
 #include <sdktools>
 #include <sdkhooks>
 #include <cstrike>
-#include <zombiereloaded>
+#include <zriot>
 #include <zr_lasermines>
 #include <multicolors>
+#include <shop>
+#tryinclude <vip_core>
 
 #pragma tabsize 0
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "1.4.3"
+#define PLUGIN_VERSION "1.1"
 
 #define MDL_LASER "sprites/laser.vmt"
 #define MDL_MINE "models/props_lab/tpplug.mdl"
@@ -50,10 +52,10 @@ bool g_bLate;
 public Plugin myinfo = 
 {
 	name = "[ZR] Lasermines",
-	author = "FrozDark (HLModders.ru LLC), ire.",
+	author = "FrozDark (HLModders.ru LLC), ire., +SyntX",
 	description = "Plants a laser mine",
 	version = PLUGIN_VERSION,
-	url = "http://www.hlmod.ru/"
+	url = "https://steamcommunity.com/id/SyntX34"
 };
 
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
@@ -188,18 +190,29 @@ public void OnTouchedByEntity(const char[] output, int caller, int activator, fl
 	int g_iOwner = GetEntPropEnt(caller, Prop_Data, "m_hOwnerEntity");
 	int g_iLasermine = ZR_GetLasermineByBeam(caller);
 
-	if (g_iOwner == -1 || g_iLasermine == -1  || activator == g_iOwner || ZR_IsClientHuman(activator))
+	if (g_iOwner == -1 || g_iLasermine == -1 || activator == g_iOwner || !ZRiot_IsClientZombie(activator))
 	{
 		return;
 	}
 
-	int g_iDummyDamage;
-	int g_iDummyCaller;
-	int g_iDummyOwner;
+	char actName[MAX_NAME_LENGTH], ownName[MAX_NAME_LENGTH], steamid[64], team[16];
+	GetClientName(activator, actName, sizeof(actName));
+	GetClientName(g_iOwner, ownName, sizeof(ownName));
+	GetClientAuthId(activator, AuthId_Steam2, steamid, sizeof(steamid));
+	strcopy(team, sizeof(team), ZRiot_IsClientZombie(activator) ? "Zombie" : "Human");
 
-	g_iDummyDamage = g_iDamage;
-	g_iDummyCaller = caller;
-	g_iDummyOwner = g_iOwner;
+	if (ZRiot_IsClientProtected(activator))
+	{
+		char message[256];
+		Format(message, sizeof(message), "[LaserMine Debug] Attempted damage to %s (SteamID: %s, Team: %s, protected) by laser mine owned by %s - blocked", actName, steamid, team, ownName);
+		//PrintToServer(message);
+		//NotifyAdmins(message);
+		return;
+	}
+
+	int g_iDummyDamage = g_iDamage;
+	int g_iDummyCaller = caller;
+	int g_iDummyOwner = g_iOwner;
 
 	float fVelocity[3];
 	GetEntPropVector(activator, Prop_Data, "m_vecVelocity", fVelocity);
@@ -207,7 +220,26 @@ public void OnTouchedByEntity(const char[] output, int caller, int activator, fl
 	SDKHooks_TakeDamage(activator, g_iDummyCaller, g_iDummyOwner, float(g_iDummyDamage), DMG_ENERGYBEAM);
 	
 	TeleportEntity(activator, NULL_VECTOR, NULL_VECTOR, fVelocity);
+
+	char message[256];
+	Format(message, sizeof(message), "[LaserMine Debug] Damaged %s (SteamID: %s, Team: %s, not protected) by laser mine owned by %s - damage: %d", actName, steamid, team, ownName, g_iDummyDamage);
+	//PrintToServer(message);
+	//NotifyAdmins(message);
 }
+
+/*
+void NotifyAdmins(const char[] message)
+{
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsValidClient(i) && (CheckCommandAccess(i, "zr_lasermines_access", ADMFLAG_CUSTOM1, true) || CheckCommandAccess(i, "zr_lasermines_access", ADMFLAG_GENERIC, true)))
+		{
+			CPrintToChat(i, "{green}[LaserMine Debug]{default} %s", message);
+			PrintToConsole(i, "[LaserMine Debug] %s", message);
+		}
+	}
+}
+*/
 
 public void OnPlayerSpawn(Event event, const char[] name, bool dontBroadcast)
 {
@@ -296,7 +328,7 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
 {
 	static int g_iPrevButtons[MAXPLAYERS+1];
 
-	if(!g_bAllowPickup || IsFakeClient(client) || !IsPlayerAlive(client) || ZR_IsClientZombie(client))
+	if(!g_bAllowPickup || IsFakeClient(client) || !IsPlayerAlive(client) || ZRiot_IsClientZombie(client))
 		return Plugin_Continue;
 	
 	if((buttons & IN_USE) && !(g_iPrevButtons[client] & IN_USE))
@@ -564,7 +596,7 @@ public Action OnTakeDamage(int victim, int& attacker, int& inflictor, float& dam
 		{
 			int client = ZR_GetClientByLasermine(victim);
 			
-			if((client != -1) && (client != attacker) && ZR_IsClientHuman(attacker))
+			if((client != -1) && (client != attacker) && !ZRiot_IsClientZombie(attacker))
 			{
 				return Plugin_Handled;
 			}
