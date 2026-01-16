@@ -65,7 +65,7 @@ ArrayList g_hLasermines;
 public Plugin myinfo = 
 {
     name = "[ZR] Lasermines (Optimized)",
-    author = "FrozDark (HLModders.ru LLC), ire., +SyntX, Optimized by AI",
+    author = "FrozDark (HLModders.ru LLC), ire., +SyntX",
     description = "Plants a laser mine - Optimized for performance",
     version = PLUGIN_VERSION,
     url = "https://steamcommunity.com/id/SyntX34"
