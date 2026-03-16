@@ -1,24 +1,81 @@
 "Phrases"
 {
-	"Usage"
-	{
-		"en" "{green}[SM] {white}You need to be a human to use this command."
-	}
-	"NoAccess"
-	{
-		"en" "{green}[SM] {white}This command requires a VIP access."
-	}
-	"InfiniteMines"
-	{
-		"en" "You have an infinite amount of lasermines."
-	}
-	"MineAmount"
-	{
-		"#format" "{1:d}"
-		"en" "Lasermines: {1}"
-	}
-	"InvalidLocation"
-	{
-		"en" "Hint: place the lasermine on a wall."
-	}
+    "Usage"
+    {
+        "en" "{green}[SM] {white}You need to be a human to use this command."
+        "ru" "{green}[SM] {white}Вы должны быть человеком, чтобы использовать эту команду."
+        "fr" "{green}[SM] {white}Vous devez être un humain pour utiliser cette commande."
+        "de" "{green}[SM] {white}Du musst ein Mensch sein, um diesen Befehl zu verwenden."
+        "es" "{green}[SM] {white}Necesitas ser humano para usar este comando."
+        "pt" "{green}[SM] {white}Você precisa ser humano para usar este comando."
+        "pl" "{green}[SM] {white}Musisz być człowiekiem, aby użyć tej komendy."
+    }
+    
+    "NoAccess"
+    {
+        "en" "{green}[SM] {white}This command requires a VIP access."
+        "ru" "{green}[SM] {white}Для использования этой команды требуется VIP доступ."
+        "fr" "{green}[SM] {white}Cette commande nécessite un accès VIP."
+        "de" "{green}[SM] {white}Dieser Befehl erfordert VIP-Zugang."
+        "es" "{green}[SM] {white}Este comando requiere acceso VIP."
+        "pt" "{green}[SM] {white}Este comando requer acesso VIP."
+        "pl" "{green}[SM] {white}Ta komenda wymaga dostępu VIP."
+    }
+    
+    "InfiniteMines"
+    {
+        "en" "You have an infinite amount of lasermines."
+        "ru" "У вас бесконечное количество лазерных мин."
+        "fr" "Vous avez un nombre infini de mines laser."
+        "de" "Du hast eine unendliche Anzahl von Laserminen."
+        "es" "Tienes una cantidad infinita de minas láser."
+        "pt" "Você tem uma quantidade infinita de minas laser."
+        "pl" "Masz nieskończoną ilość min laserowych."
+    }
+    
+    "MineAmount"
+    {
+        "#format" "{1:d}"
+        "en" "Lasermines: {1}"
+        "ru" "Лазерные мины: {1}"
+        "fr" "Mines laser: {1}"
+        "de" "Laserminen: {1}"
+        "es" "Minas láser: {1}"
+        "pt" "Minas laser: {1}"
+        "pl" "Min laserowe: {1}"
+    }
+    
+    "InvalidLocation"
+    {
+        "en" "Hint: place the lasermine on a wall."
+        "ru" "Подсказка: разместите лазерную мину на стене."
+        "fr" "Astuce: placez la mine laser sur un mur."
+        "de" "Hinweis: Platziere die Lasermine an einer Wand."
+        "es" "Consejo: coloca la mina láser en una pared."
+        "pt" "Dica: coloque a mina laser em uma parede."
+        "pl" "Wskazówka: umieść minę laserową na ścianie."
+    }
+    
+    "MaxActiveMines"
+    {
+        "#format" "{1:d}"
+        "en" "{green}[SM] {white}You have reached the maximum amount of active lasermines ({1})."
+        "ru" "{green}[SM] {white}Вы достигли максимального количества активных лазерных мин ({1})."
+        "fr" "{green}[SM] {white}Vous avez atteint le nombre maximum de mines laser actives ({1})."
+        "de" "{green}[SM] {white}Du hast die maximale Anzahl aktiver Laserminen erreicht ({1})."
+        "es" "{green}[SM] {white}Has alcanzado la cantidad máxima de minas láser activas ({1})."
+        "pt" "{green}[SM] {white}Você atingiu a quantidade máxima de minas laser ativas ({1})."
+        "pl" "{green}[SM] {white}Osiągnąłeś maksymalną liczbę aktywnych min laserowych ({1})."
+    }
+    
+    "Infinity mines"
+    {
+        "en" "You have infinite mines"
+        "ru" "У вас бесконечные мины"
+        "fr" "Vous avez des mines infinies"
+        "de" "Du hast unendlich Minen"
+        "es" "Tienes minas infinitas"
+        "pt" "Você tem minas infinitas"
+        "pl" "Masz nieskończone miny"
+    }
 }
