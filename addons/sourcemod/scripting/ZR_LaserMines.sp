@@ -56,6 +56,9 @@ ConVar g_cvDebug;
 ConVar g_cvMaxLaserminesPerClient;
 ConVar g_cvMaxEntityCheck;
 ConVar g_cvDeathBehavior;
+ConVar g_cvAccessMethod;
+ConVar g_cvAccessFlags;
+ConVar g_cvVipCoreRequired;
 
 int g_iAmount;
 int g_iMaxAmount;
@@ -74,6 +77,9 @@ bool g_bDebug;
 int g_iMaxLaserminesPerClient;
 int g_iMaxEntityCheck;
 int g_iDeathBehavior;
+int g_iAccessMethod;
+char g_sAccessFlags[32];
+bool g_bVipCoreRequired;
 
 StringMap g_smLasermineToSteamID;
 StringMap g_smBeamToLasermine;
@@ -130,6 +136,9 @@ public void OnPluginStart()
     g_cvMaxLaserminesPerClient = CreateConVar("zr_lasermines_max_per_client", "32", "Maximum lasermines a single client can have active at once", _, true, 1.0, true, 256.0);
     g_cvMaxEntityCheck = CreateConVar("zr_lasermines_max_entity_check", "2048", "Maximum entity index to check in loops (performance)", _, true, 100.0, true, 8192.0);
     g_cvDeathBehavior = CreateConVar("zr_lasermines_death_behavior", "1", "Death behavior: 0=Disabled, 1=Remove all planted mines, 2=Keep mines but no new ones", _, true, 0.0, true, 2.0);
+	g_cvAccessMethod = CreateConVar("zr_lasermines_access_method", "2", "Access method: 1=Flags only, 2=Vip Core only, 3=Both (Flags OR Vip)", _, true, 1.0, true, 3.0);
+	g_cvAccessFlags = CreateConVar("zr_lasermines_access_flags", "o", "Flags required for access (if access_method is 1 or 3). Use standard SM flags (a-z)");
+	g_cvVipCoreRequired = CreateConVar("zr_lasermines_vipcore_required", "1", "Require VIP_Core for access method 2/3? 0=No, 1=Yes (if 0 and no VipCore, access is denied)", _, true, 0.0, true, 1.0);
 
     HookConVarChange(g_cvSpawnMineAmount, OnConVarChanged);
     HookConVarChange(g_cvMaxMineAmount, OnConVarChanged);
@@ -142,6 +151,9 @@ public void OnPluginStart()
     HookConVarChange(g_cvMaxLaserminesPerClient, OnConVarChanged);
     HookConVarChange(g_cvMaxEntityCheck, OnConVarChanged);
     HookConVarChange(g_cvDeathBehavior, OnConVarChanged);
+	HookConVarChange(g_cvAccessMethod, OnConVarChanged);
+	HookConVarChange(g_cvAccessFlags, OnConVarChanged);
+	HookConVarChange(g_cvVipCoreRequired, OnConVarChanged);
 
     HookEvent("player_spawn", OnPlayerSpawn);
     HookEvent("player_death", OnPlayerDeath);
@@ -274,6 +286,9 @@ public void OnConfigsExecuted()
     g_iMaxLaserminesPerClient = g_cvMaxLaserminesPerClient.IntValue;
     g_iMaxEntityCheck = g_cvMaxEntityCheck.IntValue;
     g_iDeathBehavior = g_cvDeathBehavior.IntValue;
+	g_iAccessMethod = g_cvAccessMethod.IntValue;
+	g_cvAccessFlags.GetString(g_sAccessFlags, sizeof(g_sAccessFlags));
+	g_bVipCoreRequired = g_cvVipCoreRequired.BoolValue;
 
     if(g_bDebug)
     {
@@ -281,6 +296,8 @@ public void OnConfigsExecuted()
             g_iAmount, g_iMaxAmount, g_iDamage);
         LogMessage("[Lasermines] Config loaded - MaxPerClient: %d, MaxEntityCheck: %d, DeathBehavior: %d, Debug: %d", 
             g_iMaxLaserminesPerClient, g_iMaxEntityCheck, g_iDeathBehavior, g_cvDebug.IntValue);
+		LogMessage("[Lasermines] Access config - Method: %d, Flags: %s, VipCoreRequired: %d", 
+        	g_iAccessMethod, g_sAccessFlags, g_bVipCoreRequired);
     }
 }
 
@@ -1465,17 +1482,66 @@ bool IsValidClient(int client)
 
 bool AccessToLasermines(int client)
 {
-    if (CheckCommandAccess(client, "zr_lasermines_access", ADMFLAG_CUSTOM1, true) || 
-        CheckCommandAccess(client, "zr_lasermines_access", ADMFLAG_RESERVATION, true))
+	if (CheckCommandAccess(client, "zr_lasermines_root", ADMFLAG_ROOT, true))
     {
+        if(g_bDebug && g_cvDebug.IntValue >= 2)
+        {
+            LogMessage("[Lasermines] Client %N has root access", client);
+        }
         return true;
     }
-    if (g_bHasVipCore)
-    {
-        return VIP_IsClientVIP(client);
-    }
+	
+    bool bHasFlagAccess = false;
+    bool bHasVipAccess = false;
     
-    return false;
+    if(g_iAccessMethod == 1 || g_iAccessMethod == 3)
+    {
+        int flagCount = strlen(g_sAccessFlags);
+        if(flagCount > 0)
+        {
+            for(int i = 0; i < flagCount; i++)
+            {
+                AdminFlag flag;
+                if(FindFlagByChar(g_sAccessFlags[i], flag))
+                {
+                    if(CheckCommandAccess(client, "zr_lasermines_access", flag, true))
+                    {
+                        bHasFlagAccess = true;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        if(!bHasFlagAccess && flagCount == 0)
+        {
+            bHasFlagAccess = (CheckCommandAccess(client, "zr_lasermines_access", ADMFLAG_CUSTOM1, true) || 
+                            CheckCommandAccess(client, "zr_lasermines_access", ADMFLAG_RESERVATION, true));
+        }
+    }
+    if((g_iAccessMethod == 2 || g_iAccessMethod == 3) && g_bHasVipCore)
+    {
+        bHasVipAccess = VIP_IsClientVIP(client);
+    }
+    else if((g_iAccessMethod == 2 || g_iAccessMethod == 3) && !g_bHasVipCore && g_bVipCoreRequired)
+    {
+        if(g_bDebug)
+        {
+            LogMessage("[Lasermines] VipCore required for access but plugin not found");
+        }
+        bHasVipAccess = false;
+    }
+    else if((g_iAccessMethod == 2 || g_iAccessMethod == 3) && !g_bHasVipCore && !g_bVipCoreRequired)
+    {
+        bHasVipAccess = false;
+    }
+    switch(g_iAccessMethod)
+    {
+        case 1: return bHasFlagAccess;
+        case 2: return bHasVipAccess;
+        case 3: return (bHasFlagAccess || bHasVipAccess);
+        default: return false;
+    }
 }
 
 public void OnPluginEnd()
