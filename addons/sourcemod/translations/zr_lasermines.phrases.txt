@@ -2,24 +2,24 @@
 {
     "Usage"
     {
-        "en" "{green}[SM] {white}You need to be a human to use this command."
-        "ru" "{green}[SM] {white}Вы должны быть человеком, чтобы использовать эту команду."
-        "fr" "{green}[SM] {white}Vous devez être un humain pour utiliser cette commande."
-        "de" "{green}[SM] {white}Du musst ein Mensch sein, um diesen Befehl zu verwenden."
-        "es" "{green}[SM] {white}Necesitas ser humano para usar este comando."
-        "pt" "{green}[SM] {white}Você precisa ser humano para usar este comando."
-        "pl" "{green}[SM] {white}Musisz być człowiekiem, aby użyć tej komendy."
+        "en" "{green}[LaserMine] {white}You need to be a human to use this command."
+        "ru" "{green}[LaserMine] {white}Вы должны быть человеком, чтобы использовать эту команду."
+        "fr" "{green}[LaserMine] {white}Vous devez être un humain pour utiliser cette commande."
+        "de" "{green}[LaserMine] {white}Du musst ein Mensch sein, um diesen Befehl zu verwenden."
+        "es" "{green}[LaserMine] {white}Necesitas ser humano para usar este comando."
+        "pt" "{green}[LaserMine] {white}Você precisa ser humano para usar este comando."
+        "pl" "{green}[LaserMine] {white}Musisz być człowiekiem, aby użyć tej komendy."
     }
     
     "NoAccess"
     {
-        "en" "{green}[SM] {white}This command requires a VIP access."
-        "ru" "{green}[SM] {white}Для использования этой команды требуется VIP доступ."
-        "fr" "{green}[SM] {white}Cette commande nécessite un accès VIP."
-        "de" "{green}[SM] {white}Dieser Befehl erfordert VIP-Zugang."
-        "es" "{green}[SM] {white}Este comando requiere acceso VIP."
-        "pt" "{green}[SM] {white}Este comando requer acesso VIP."
-        "pl" "{green}[SM] {white}Ta komenda wymaga dostępu VIP."
+        "en" "{green}[LaserMine] {white}This command requires a VIP access."
+        "ru" "{green}[LaserMine] {white}Для использования этой команды требуется VIP доступ."
+        "fr" "{green}[LaserMine] {white}Cette commande nécessite un accès VIP."
+        "de" "{green}[LaserMine] {white}Dieser Befehl erfordert VIP-Zugang."
+        "es" "{green}[LaserMine] {white}Este comando requiere acceso VIP."
+        "pt" "{green}[LaserMine] {white}Este comando requer acesso VIP."
+        "pl" "{green}[LaserMine] {white}Ta komenda wymaga dostępu VIP."
     }
     
     "InfiniteMines"
@@ -59,13 +59,13 @@
     "MaxActiveMines"
     {
         "#format" "{1:d}"
-        "en" "{green}[SM] {white}You have reached the maximum amount of active lasermines ({1})."
-        "ru" "{green}[SM] {white}Вы достигли максимального количества активных лазерных мин ({1})."
-        "fr" "{green}[SM] {white}Vous avez atteint le nombre maximum de mines laser actives ({1})."
-        "de" "{green}[SM] {white}Du hast die maximale Anzahl aktiver Laserminen erreicht ({1})."
-        "es" "{green}[SM] {white}Has alcanzado la cantidad máxima de minas láser activas ({1})."
-        "pt" "{green}[SM] {white}Você atingiu a quantidade máxima de minas laser ativas ({1})."
-        "pl" "{green}[SM] {white}Osiągnąłeś maksymalną liczbę aktywnych min laserowych ({1})."
+        "en" "{green}[LaserMine] {white}You have reached the maximum amount of active lasermines ({1})."
+        "ru" "{green}[LaserMine] {white}Вы достигли максимального количества активных лазерных мин ({1})."
+        "fr" "{green}[LaserMine] {white}Vous avez atteint le nombre maximum de mines laser actives ({1})."
+        "de" "{green}[LaserMine] {white}Du hast die maximale Anzahl aktiver Laserminen erreicht ({1})."
+        "es" "{green}[LaserMine] {white}Has alcanzado la cantidad máxima de minas láser activas ({1})."
+        "pt" "{green}[LaserMine] {white}Você atingiu a quantidade máxima de minas laser ativas ({1})."
+        "pl" "{green}[LaserMine] {white}Osiągnąłeś maksymalną liczbę aktywnych min laserowych ({1})."
     }
     
     "Infinity mines"
@@ -78,4 +78,15 @@
         "pt" "Você tem minas infinitas"
         "pl" "Masz nieskończone miny"
     }
+
+	"NotInSpawn"
+	{
+		"en" "{green}[LaserMine] {white}You cannot use this command in spawn."
+		"ru" "{green}[LaserMine] {white}Вы не можете использовать эту команду в спавне."
+		"fr" "{green}[LaserMine] {white}Vous ne pouvez pas utiliser cette commande dans le spawn."
+		"de" "{green}[LaserMine] {white}Du kannst diesen Befehl nicht im Spawn verwenden."
+		"es" "{green}[LaserMine] {white}No puedes usar este comando en el spawn."
+		"pt" "{green}[LaserMine] {white}Você não pode usar este comando no spawn."
+		"pl" "{green}[LaserMine] {white}Nie możesz użyć tej komendy w spawnie."
+	}
 }
