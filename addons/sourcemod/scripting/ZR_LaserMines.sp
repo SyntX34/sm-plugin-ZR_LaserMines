@@ -8,11 +8,11 @@
 #include <sdkhooks>
 #include <cstrike>
 #include <multicolors>
+#include <vip_core>
 
 #undef REQUIRE_PLUGIN
 #tryinclude <zombiereloaded>
 #tryinclude <zriot>
-#tryinclude <vip_core>
 #define REQUIRE_PLUGIN
 
 #if !defined _zombiereloaded_included && !defined ZRIOT_INCLUDED
@@ -26,7 +26,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define PLUGIN_VERSION "1.4"
+#define PLUGIN_VERSION "1.5"
 
 #define MDL_LASER "sprites/laser.vmt"
 #define MDL_MINE "models/props_lab/tpplug.mdl"
@@ -45,6 +45,8 @@ Sounds
 #define DEFAULT_MAX_LASERMINES_PER_CLIENT 32
 #define DEFAULT_MAX_ENTITY_CHECK 2048
 
+#define FEATURE_LASERMINES "VIP_LASERMINES"
+
 ConVar g_cvSpawnMineAmount;
 ConVar g_cvMaxMineAmount;
 ConVar g_cvMineDamage;
@@ -56,9 +58,6 @@ ConVar g_cvDebug;
 ConVar g_cvMaxLaserminesPerClient;
 ConVar g_cvMaxEntityCheck;
 ConVar g_cvDeathBehavior;
-ConVar g_cvAccessMethod;
-ConVar g_cvAccessFlags;
-ConVar g_cvVipCoreRequired;
 
 int g_iAmount;
 int g_iMaxAmount;
@@ -77,9 +76,6 @@ bool g_bDebug;
 int g_iMaxLaserminesPerClient;
 int g_iMaxEntityCheck;
 int g_iDeathBehavior;
-int g_iAccessMethod;
-char g_sAccessFlags[32];
-bool g_bVipCoreRequired;
 
 StringMap g_smLasermineToSteamID;
 StringMap g_smBeamToLasermine;
@@ -91,9 +87,9 @@ bool g_bHasVipCore = false;
 
 public Plugin myinfo = 
 {
-    name = "[ZR] Lasermines (Optimized)",
+    name = "[VIP] Lasermines",
     author = "FrozDark (HLModders.ru LLC), ire., +SyntX",
-    description = "Plants a laser mine - Works with Zombie:Riot and Zombie:Reloaded",
+    description = "Plants a laser mine - VIP System Integration",
     version = PLUGIN_VERSION,
     url = "https://steamcommunity.com/id/SyntX34"
 };
@@ -111,6 +107,10 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
     CreateNative("ZR_SetClientMaxLasermines", Native_SetClientMaxLasermines);
     CreateNative("ZR_GetBeamByLasermine", Native_GetBeamByLasermine);
     CreateNative("ZR_GetLasermineByBeam", Native_GetLasermineByBeam);
+	MarkNativeAsOptional("ZR_IsClientZombie");
+	MarkNativeAsOptional("ZR_IsClientHuman");
+	MarkNativeAsOptional("ZRiot_IsClientZombie");
+	MarkNativeAsOptional("ZRiot_IsClientProtected");
 
     RegPluginLibrary("zr_lasermines");
 
@@ -136,9 +136,6 @@ public void OnPluginStart()
     g_cvMaxLaserminesPerClient = CreateConVar("zr_lasermines_max_per_client", "32", "Maximum lasermines a single client can have active at once", _, true, 1.0, true, 256.0);
     g_cvMaxEntityCheck = CreateConVar("zr_lasermines_max_entity_check", "2048", "Maximum entity index to check in loops (performance)", _, true, 100.0, true, 8192.0);
     g_cvDeathBehavior = CreateConVar("zr_lasermines_death_behavior", "1", "Death behavior: 0=Disabled, 1=Remove all planted mines, 2=Keep mines but no new ones", _, true, 0.0, true, 2.0);
-	g_cvAccessMethod = CreateConVar("zr_lasermines_access_method", "2", "Access method: 1=Flags only, 2=Vip Core only, 3=Both (Flags OR Vip)", _, true, 1.0, true, 3.0);
-	g_cvAccessFlags = CreateConVar("zr_lasermines_access_flags", "o", "Flags required for access (if access_method is 1 or 3). Use standard SM flags (a-z)");
-	g_cvVipCoreRequired = CreateConVar("zr_lasermines_vipcore_required", "1", "Require VIP_Core for access method 2/3? 0=No, 1=Yes (if 0 and no VipCore, access is denied)", _, true, 0.0, true, 1.0);
 
     HookConVarChange(g_cvSpawnMineAmount, OnConVarChanged);
     HookConVarChange(g_cvMaxMineAmount, OnConVarChanged);
@@ -151,9 +148,6 @@ public void OnPluginStart()
     HookConVarChange(g_cvMaxLaserminesPerClient, OnConVarChanged);
     HookConVarChange(g_cvMaxEntityCheck, OnConVarChanged);
     HookConVarChange(g_cvDeathBehavior, OnConVarChanged);
-	HookConVarChange(g_cvAccessMethod, OnConVarChanged);
-	HookConVarChange(g_cvAccessFlags, OnConVarChanged);
-	HookConVarChange(g_cvVipCoreRequired, OnConVarChanged);
 
     HookEvent("player_spawn", OnPlayerSpawn);
     HookEvent("player_death", OnPlayerDeath);
@@ -198,6 +192,7 @@ public void OnLibraryAdded(const char[] name)
     {
         g_bHasVipCore = true;
         if (g_bDebug) LogMessage("[Lasermines] Vip_core found");
+        VIP_RegisterFeature(FEATURE_LASERMINES, BOOL, HIDE);
     }
 }
 
@@ -286,9 +281,6 @@ public void OnConfigsExecuted()
     g_iMaxLaserminesPerClient = g_cvMaxLaserminesPerClient.IntValue;
     g_iMaxEntityCheck = g_cvMaxEntityCheck.IntValue;
     g_iDeathBehavior = g_cvDeathBehavior.IntValue;
-	g_iAccessMethod = g_cvAccessMethod.IntValue;
-	g_cvAccessFlags.GetString(g_sAccessFlags, sizeof(g_sAccessFlags));
-	g_bVipCoreRequired = g_cvVipCoreRequired.BoolValue;
 
     if(g_bDebug)
     {
@@ -296,8 +288,6 @@ public void OnConfigsExecuted()
             g_iAmount, g_iMaxAmount, g_iDamage);
         LogMessage("[Lasermines] Config loaded - MaxPerClient: %d, MaxEntityCheck: %d, DeathBehavior: %d, Debug: %d", 
             g_iMaxLaserminesPerClient, g_iMaxEntityCheck, g_iDeathBehavior, g_cvDebug.IntValue);
-		LogMessage("[Lasermines] Access config - Method: %d, Flags: %s, VipCoreRequired: %d", 
-        	g_iAccessMethod, g_sAccessFlags, g_bVipCoreRequired);
     }
 }
 
@@ -543,16 +533,19 @@ void HandleClientBecomeZombie(int client)
         }
     }
 }
-
+#if defined ZRIOT_INCLUDED
 public void ZRiot_OnClientZombie(int client)
 {
     HandleClientBecomeZombie(client);
 }
+#endif
 
+#if defined _zombiereloaded_included
 public void ZR_OnClientInfected(int client, int attacker, bool motherInfect, bool respawnOverride, bool respawn)
 {
     HandleClientBecomeZombie(client);
 }
+#endif
 
 public void OnTouchedByEntity(const char[] output, int caller, int activator, float delay)
 {
@@ -569,6 +562,17 @@ public void OnTouchedByEntity(const char[] output, int caller, int activator, fl
         return;
     }
 
+    if (IsClientProtected(activator))
+    {
+        if(g_bDebug && g_cvDebug.IntValue >= 1)
+        {
+            char actName[MAX_NAME_LENGTH];
+            GetClientName(activator, actName, sizeof(actName));
+            LogMessage("[Lasermines Debug] Damage blocked - %s has spawn protection", actName);
+        }
+        return;
+    }
+
     if(g_bDebug && g_cvDebug.IntValue >= 2)
     {
         char actName[MAX_NAME_LENGTH], ownName[MAX_NAME_LENGTH];
@@ -577,15 +581,6 @@ public void OnTouchedByEntity(const char[] output, int caller, int activator, fl
 
         LogMessage("[Lasermines Debug] Beam %d touched by %s (owner: %s)", 
             caller, actName, ownName);
-    }
-
-    if (IsClientProtected(activator))
-    {
-        if(g_bDebug && g_cvDebug.IntValue >= 1)
-        {
-            LogMessage("[Lasermines Debug] Damage blocked - %d is protected", activator);
-        }
-        return;
     }
 
     float fVelocity[3];
@@ -601,9 +596,71 @@ public void OnTouchedByEntity(const char[] output, int caller, int activator, fl
     }
 }
 
+public void VIP_OnVIPClientLoaded(int client)
+{
+    if (VIP_GetClientFeatureStatus(client, FEATURE_LASERMINES) == NO_ACCESS)
+        return;
+    
+    if(g_bDebug)
+    {
+        LogMessage("[Lasermines] VIP client %N loaded with lasermines feature", client);
+    }
+    
+    if (IsClientInGame(client) && !IsClientZombie(client))
+    {
+        g_iClientsAmount[client] = g_iAmount;
+        g_iClientsMaxLimit[client] = g_iMaxAmount;
+        g_iClientsMyAmount[client] = g_iAmount;
+        
+        if(g_bDebug)
+        {
+            LogMessage("[Lasermines] Set initial mine count for VIP %N: %d", client, g_iAmount);
+        }
+    }
+}
+
+public Action OnToggleItem(int client, const char[] szFeature, VIP_ToggleState OldStatus, VIP_ToggleState &NewStatus)
+{
+    if(g_bDebug)
+    {
+        LogMessage("[Lasermines] Toggle item for client %N: %d -> %d", client, OldStatus, NewStatus);
+    }
+    
+    if (NewStatus == DISABLED || NewStatus == NO_ACCESS)
+    {
+        ClearClientLasermines(client);
+        g_iClientsAmount[client] = 0;
+        g_iUsedByNative[client] = false;
+    }
+    else if (NewStatus == ENABLED)
+    {
+        if (!g_iUsedByNative[client])
+        {
+            g_iClientsMaxLimit[client] = g_iMaxAmount;
+            g_iClientsMyAmount[client] = g_iAmount;
+            if (IsClientInGame(client) && !IsClientZombie(client))
+            {
+                g_iClientsAmount[client] = g_iAmount;
+            }
+        }
+    }
+    
+    return Plugin_Continue;
+}
+
 public void OnPlayerSpawn(Event event, const char[] name, bool dontBroadcast)
 {
     int client = GetClientOfUserId(GetEventInt(event, "userid"));
+    
+    if (!HasVIPAccess(client))
+    {
+        if(g_bDebug)
+        {
+            LogMessage("[Lasermines] Client %N spawned but has no VIP access to lasermines", client);
+        }
+        g_iClientsAmount[client] = 0;
+        return;
+    }
     
     if(!g_iUsedByNative[client] && g_iClientsMyAmount[client] == 0)
     {
@@ -612,7 +669,7 @@ public void OnPlayerSpawn(Event event, const char[] name, bool dontBroadcast)
         
         if(g_bDebug)
         {
-            LogMessage("[Lasermines Debug] First spawn for client %N - Setting defaults: g_iClientsMyAmount=%d", 
+            LogMessage("[Lasermines] First spawn for client %N - Setting defaults: g_iClientsMyAmount=%d", 
                 client, g_iClientsMyAmount[client]);
         }
     }
@@ -735,7 +792,7 @@ public Action Command_PlantMine(int client, int argc)
         return Plugin_Handled;
     }
 
-    if(!AccessToLasermines(client))
+    if(!HasVIPAccess(client))
     {
         CPrintToChat(client, "%t", "NoAccess");
         return Plugin_Handled;
@@ -744,6 +801,12 @@ public Action Command_PlantMine(int client, int argc)
     if (IsClientZombie(client))
     {
         CPrintToChat(client, "%t", "NoAccess");
+        return Plugin_Handled;
+    }
+    
+    if (IsClientInSpawn(client))
+    {
+        CPrintToChat(client, "%t", "NotInSpawn");
         return Plugin_Handled;
     }
 
@@ -1170,6 +1233,54 @@ public Action OnActivateLaser(Handle Timer, any hDataPack)
     return Plugin_Stop;
 }
 
+bool HasVIPAccess(int client)
+{
+    if (!g_bHasVipCore)
+    {
+        if(g_bDebug)
+        {
+            LogMessage("[Lasermines] Vip_Core not found, access denied for %N", client);
+        }
+        return false;
+    }
+    
+    int status = VIP_GetClientFeatureStatus(client, FEATURE_LASERMINES);
+    bool hasAccess = (status == 1);
+    
+    if(g_bDebug && g_cvDebug.IntValue >= 2)
+    {
+        LogMessage("[Lasermines] Client %N VIP access check: %d (status code: %d)", client, hasAccess, status);
+    }
+    
+    return hasAccess;
+}
+
+bool IsClientInSpawn(int client)
+{
+    float origin[3];
+    GetClientAbsOrigin(client, origin);
+    
+    int entity = -1;
+    float spawnOrigin[3];
+    
+    while ((entity = FindEntityByClassname(entity, "info_player_counterterrorist")) != -1)
+    {
+        GetEntPropVector(entity, Prop_Data, "m_vecOrigin", spawnOrigin);
+        if (GetVectorDistance(origin, spawnOrigin) <= 150.0)
+            return true;
+    }
+    
+    entity = -1;
+    while ((entity = FindEntityByClassname(entity, "info_player_terrorist")) != -1)
+    {
+        GetEntPropVector(entity, Prop_Data, "m_vecOrigin", spawnOrigin);
+        if (GetVectorDistance(origin, spawnOrigin) <= 150.0)
+            return true;
+    }
+    
+    return false;
+}
+
 public any Native_AddMines(Handle plugin, int numParams)
 {
     int client = GetNativeCell(1);
@@ -1478,70 +1589,6 @@ public any Native_GetLasermineByBeam(Handle plugin, int numParams)
 bool IsValidClient(int client)
 {
     return(IsClientInGame(client) && IsPlayerAlive(client) && GetClientTeam(client) == CS_TEAM_CT);
-}
-
-bool AccessToLasermines(int client)
-{
-	if (CheckCommandAccess(client, "zr_lasermines_root", ADMFLAG_ROOT, true))
-    {
-        if(g_bDebug && g_cvDebug.IntValue >= 2)
-        {
-            LogMessage("[Lasermines] Client %N has root access", client);
-        }
-        return true;
-    }
-	
-    bool bHasFlagAccess = false;
-    bool bHasVipAccess = false;
-    
-    if(g_iAccessMethod == 1 || g_iAccessMethod == 3)
-    {
-        int flagCount = strlen(g_sAccessFlags);
-        if(flagCount > 0)
-        {
-            for(int i = 0; i < flagCount; i++)
-            {
-                AdminFlag flag;
-                if(FindFlagByChar(g_sAccessFlags[i], flag))
-                {
-                    if(CheckCommandAccess(client, "zr_lasermines_access", flag, true))
-                    {
-                        bHasFlagAccess = true;
-                        break;
-                    }
-                }
-            }
-        }
-        
-        if(!bHasFlagAccess && flagCount == 0)
-        {
-            bHasFlagAccess = (CheckCommandAccess(client, "zr_lasermines_access", ADMFLAG_CUSTOM1, true) || 
-                            CheckCommandAccess(client, "zr_lasermines_access", ADMFLAG_RESERVATION, true));
-        }
-    }
-    if((g_iAccessMethod == 2 || g_iAccessMethod == 3) && g_bHasVipCore)
-    {
-        bHasVipAccess = VIP_IsClientVIP(client);
-    }
-    else if((g_iAccessMethod == 2 || g_iAccessMethod == 3) && !g_bHasVipCore && g_bVipCoreRequired)
-    {
-        if(g_bDebug)
-        {
-            LogMessage("[Lasermines] VipCore required for access but plugin not found");
-        }
-        bHasVipAccess = false;
-    }
-    else if((g_iAccessMethod == 2 || g_iAccessMethod == 3) && !g_bHasVipCore && !g_bVipCoreRequired)
-    {
-        bHasVipAccess = false;
-    }
-    switch(g_iAccessMethod)
-    {
-        case 1: return bHasFlagAccess;
-        case 2: return bHasVipAccess;
-        case 3: return (bHasFlagAccess || bHasVipAccess);
-        default: return false;
-    }
 }
 
 public void OnPluginEnd()
