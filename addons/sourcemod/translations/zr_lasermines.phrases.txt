@@ -89,4 +89,15 @@
 		"pt" "{green}[LaserMine] {white}Você não pode usar este comando no spawn."
 		"pl" "{green}[LaserMine] {white}Nie możesz użyć tej komendy w spawnie."
 	}
+
+	"CannotPlantInEnemySpawn"
+	{
+		"en" "{green}[LaserMine] {white}You cannot plant a lasermine in the enemy spawn area."
+		"ru" "{green}[LaserMine] {white}Вы не можете установить лазерную мину в зоне спавна противника."
+		"fr" "{green}[LaserMine] {white}Vous ne pouvez pas planter une mine laser dans la zone de spawn ennemie."
+		"de" "{green}[LaserMine] {white}Du kannst keine Lasermine im feindlichen Spawn-Bereich platzieren."
+		"es" "{green}[LaserMine] {white}No puedes plantar una mina láser en el área de spawn enemiga."
+		"pt" "{green}[LaserMine] {white}Você não pode plantar uma mina laser na área de spawn inimiga."
+		"pl" "{green}[LaserMine] {white}Nie możesz postawić miny laserowej w strefie spawnu wroga."
+	}
 }
