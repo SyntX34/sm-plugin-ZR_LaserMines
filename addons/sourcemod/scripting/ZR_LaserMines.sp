@@ -58,6 +58,8 @@ ConVar g_cvDebug;
 ConVar g_cvMaxLaserminesPerClient;
 ConVar g_cvMaxEntityCheck;
 ConVar g_cvDeathBehavior;
+ConVar g_cvBlockOwnSpawn;
+ConVar g_cvBlockEnemySpawn;
 
 int g_iAmount;
 int g_iMaxAmount;
@@ -76,6 +78,8 @@ bool g_bDebug;
 int g_iMaxLaserminesPerClient;
 int g_iMaxEntityCheck;
 int g_iDeathBehavior;
+bool g_bBlockOwnSpawn;
+bool g_bBlockEnemySpawn;
 
 StringMap g_smLasermineToSteamID;
 StringMap g_smBeamToLasermine;
@@ -136,6 +140,8 @@ public void OnPluginStart()
     g_cvMaxLaserminesPerClient = CreateConVar("zr_lasermines_max_per_client", "32", "Maximum lasermines a single client can have active at once", _, true, 1.0, true, 256.0);
     g_cvMaxEntityCheck = CreateConVar("zr_lasermines_max_entity_check", "2048", "Maximum entity index to check in loops (performance)", _, true, 100.0, true, 8192.0);
     g_cvDeathBehavior = CreateConVar("zr_lasermines_death_behavior", "1", "Death behavior: 0=Disabled, 1=Remove all planted mines, 2=Keep mines but no new ones", _, true, 0.0, true, 2.0);
+	g_cvBlockOwnSpawn = CreateConVar("zr_lasermines_block_own_spawn", "0", "Block planting lasermines in own spawn area (0=Disabled, 1=Enabled)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_cvBlockEnemySpawn = CreateConVar("zr_lasermines_block_enemy_spawn", "1", "Block planting lasermines in enemy spawn area (0=Disabled, 1=Enabled)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 
     HookConVarChange(g_cvSpawnMineAmount, OnConVarChanged);
     HookConVarChange(g_cvMaxMineAmount, OnConVarChanged);
@@ -148,6 +154,8 @@ public void OnPluginStart()
     HookConVarChange(g_cvMaxLaserminesPerClient, OnConVarChanged);
     HookConVarChange(g_cvMaxEntityCheck, OnConVarChanged);
     HookConVarChange(g_cvDeathBehavior, OnConVarChanged);
+	HookConVarChange(g_cvBlockOwnSpawn, OnConVarChanged);
+	HookConVarChange(g_cvBlockEnemySpawn, OnConVarChanged);
 
     HookEvent("player_spawn", OnPlayerSpawn);
     HookEvent("player_death", OnPlayerDeath);
@@ -281,6 +289,8 @@ public void OnConfigsExecuted()
     g_iMaxLaserminesPerClient = g_cvMaxLaserminesPerClient.IntValue;
     g_iMaxEntityCheck = g_cvMaxEntityCheck.IntValue;
     g_iDeathBehavior = g_cvDeathBehavior.IntValue;
+    g_bBlockOwnSpawn = g_cvBlockOwnSpawn.BoolValue;
+	g_bBlockEnemySpawn = g_cvBlockEnemySpawn.BoolValue;
 
     if(g_bDebug)
     {
@@ -288,6 +298,8 @@ public void OnConfigsExecuted()
             g_iAmount, g_iMaxAmount, g_iDamage);
         LogMessage("[Lasermines] Config loaded - MaxPerClient: %d, MaxEntityCheck: %d, DeathBehavior: %d, Debug: %d", 
             g_iMaxLaserminesPerClient, g_iMaxEntityCheck, g_iDeathBehavior, g_cvDebug.IntValue);
+        LogMessage("[Lasermines] Spawn blocking - OwnSpawn: %d, EnemySpawn: %d", 
+            g_bBlockOwnSpawn, g_bBlockEnemySpawn);
     }
 }
 
@@ -533,6 +545,86 @@ void HandleClientBecomeZombie(int client)
         }
     }
 }
+
+bool IsPositionInOwnSpawn(int client, const float position[3])
+{
+    if (!g_cvBlockOwnSpawn.BoolValue)
+        return false;
+    
+    int clientTeam = GetClientTeam(client);
+    char spawnClass[64];
+    
+    if (clientTeam == CS_TEAM_CT)
+        strcopy(spawnClass, sizeof(spawnClass), "info_player_counterterrorist");
+    else if (clientTeam == CS_TEAM_T)
+        strcopy(spawnClass, sizeof(spawnClass), "info_player_terrorist");
+    else
+        return false;
+    
+    int entity = -1;
+    float spawnOrigin[3];
+    float distance;
+    
+    while ((entity = FindEntityByClassname(entity, spawnClass)) != -1)
+    {
+        GetEntPropVector(entity, Prop_Data, "m_vecOrigin", spawnOrigin);
+        distance = GetVectorDistance(position, spawnOrigin);
+        
+        if (distance <= 200.0)
+        {
+            if (g_bDebug && g_cvDebug.IntValue >= 2)
+            {
+                LogMessage("[Lasermines Debug] Blocked mine placement in own spawn at distance %.2f", distance);
+            }
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+bool IsPositionInEnemySpawn(int client, const float position[3])
+{
+    if (!g_cvBlockEnemySpawn.BoolValue)
+        return false;
+    
+    int clientTeam = GetClientTeam(client);
+    int enemyTeam = (clientTeam == CS_TEAM_CT) ? CS_TEAM_T : CS_TEAM_CT;
+    char spawnClass[64];
+    if (enemyTeam == CS_TEAM_CT)
+        strcopy(spawnClass, sizeof(spawnClass), "info_player_counterterrorist");
+    else if (enemyTeam == CS_TEAM_T)
+        strcopy(spawnClass, sizeof(spawnClass), "info_player_terrorist");
+    else
+        return false;
+    
+    int entity = -1;
+    float spawnOrigin[3];
+    float distance;
+    
+    while ((entity = FindEntityByClassname(entity, spawnClass)) != -1)
+    {
+        GetEntPropVector(entity, Prop_Data, "m_vecOrigin", spawnOrigin);
+        distance = GetVectorDistance(position, spawnOrigin);
+        
+        if (distance <= 200.0)
+        {
+            if (g_bDebug && g_cvDebug.IntValue >= 2)
+            {
+                LogMessage("[Lasermines Debug] Blocked mine placement in enemy spawn at distance %.2f", distance);
+            }
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+bool IsPositionInAnyRestrictedSpawn(int client, const float position[3])
+{
+    return IsPositionInOwnSpawn(client, position) || IsPositionInEnemySpawn(client, position);
+}
+
 #if defined ZRIOT_INCLUDED
 public void ZRiot_OnClientZombie(int client)
 {
@@ -804,9 +896,17 @@ public Action Command_PlantMine(int client, int argc)
         return Plugin_Handled;
     }
     
-    if (IsClientInSpawn(client))
+    float clientPos[3];
+    GetClientAbsOrigin(client, clientPos);
+	if (IsPositionInOwnSpawn(client, clientPos))
+	{
+		CPrintToChat(client, "%t", "NotInSpawn");
+        return Plugin_Handled;
+	}
+
+	if (IsPositionInEnemySpawn(client, clientPos))
     {
-        CPrintToChat(client, "%t", "NotInSpawn");
+        CPrintToChat(client, "%t", "CannotPlantInEnemySpawn");
         return Plugin_Handled;
     }
 
@@ -983,6 +1083,18 @@ int PlantMine(int client, float activation_delay = 0.0, int explode_damage, int 
         TR_GetPlaneNormal(g_hTrace, fNormal);
 
         CloseHandle(g_hTrace);
+
+		if (IsPositionInOwnSpawn(client, fEnd))
+		{
+			CPrintToChat(client, "%t", "NotInSpawn");
+			return -1;
+		}
+		
+		if (IsPositionInEnemySpawn(client, fEnd))
+		{
+			CPrintToChat(client, "%t", "CannotPlantInEnemySpawn");
+			return -1;
+		}
 
         GetVectorAngles(fNormal, fNormal);
 
